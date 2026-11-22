@@ -740,7 +740,8 @@ body {
 
     <div class="block" id="evalBlock" hidden>
       <h3>Model evaluation <span class="muted" id="evalScopeHint"></span></h3>
-      <div class="tag-row" id="evalLsFilterTags" style="margin:8px 0 10px" title="Filter test metrics by GT landslide %">
+      <div class="tag-row" id="evalLsFilterTags" style="margin:8px 0 10px" title="Eval scope / test-set LS% filter">
+        <button type="button" class="tag" data-eval-ls="image" title="Metrics for the selected image">This image</button>
         <button type="button" class="tag active" data-eval-ls="all">All</button>
         <button type="button" class="tag" data-eval-ls="hi30">≥30% LS</button>
         <button type="button" class="tag" data-eval-ls="hi50">≥50% LS</button>
@@ -1018,18 +1019,22 @@ function applyModelEvalUI() {
     ? '(this image)'
     : `(test set · ${evalLsLabel})`;
   const evalLsRow = $('evalLsFilterTags');
-  if (evalLsRow) evalLsRow.hidden = metricsScope !== 'test';
+  if (evalLsRow) evalLsRow.hidden = false;
   const evalLsNote = $('evalLsFilterNote');
   if (evalLsNote) {
-    evalLsNote.hidden = metricsScope !== 'test';
-    evalLsNote.textContent = evalLsFilter === 'hi30'
-      ? 'Metrics over test patches with ≥30% GT landslide pixels.'
-      : (evalLsFilter === 'hi50'
-        ? 'Metrics over test patches with ≥50% GT landslide pixels.'
-        : 'Full test set (all patches).');
+    evalLsNote.hidden = false;
+    evalLsNote.textContent = metricsScope === 'image'
+      ? 'Metrics for the currently selected image only.'
+      : (evalLsFilter === 'hi30'
+        ? 'Metrics over test patches with ≥30% GT landslide pixels.'
+        : (evalLsFilter === 'hi50'
+          ? 'Metrics over test patches with ≥50% GT landslide pixels.'
+          : 'Full test set (all patches).'));
   }
   document.querySelectorAll('#evalLsFilterTags .tag').forEach(b => {
-    b.classList.toggle('active', b.dataset.evalLs === evalLsFilter);
+    const key = b.dataset.evalLs;
+    const active = metricsScope === 'image' ? key === 'image' : key === evalLsFilter;
+    b.classList.toggle('active', active);
   });
   if (modelEvalOn && cmpMode !== 'A') {
     cmpMode = 'A';
@@ -2275,13 +2280,16 @@ function wireUi() {
     refreshAll();
   };
   $('scopeImage').onclick = () => { metricsScope = 'image'; refreshAll(); };
-  $('scopeTest').onclick = () => { metricsScope = 'test'; refreshAll(); };
+  $('scopeTest').onclick = () => { metricsScope = 'test'; evalLsFilter = 'all'; refreshAll(); };
   document.querySelectorAll('#evalLsFilterTags .tag').forEach(btn => {
     btn.onclick = () => {
-      evalLsFilter = btn.dataset.evalLs || 'all';
-      document.querySelectorAll('#evalLsFilterTags .tag').forEach(b => {
-        b.classList.toggle('active', b.dataset.evalLs === evalLsFilter);
-      });
+      const key = btn.dataset.evalLs || 'all';
+      if (key === 'image') {
+        metricsScope = 'image';
+      } else {
+        metricsScope = 'test';
+        evalLsFilter = key;
+      }
       refreshAll();
     };
   });
