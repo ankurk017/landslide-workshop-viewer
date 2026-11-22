@@ -657,7 +657,6 @@ body {
 
     <div class="side-block" id="modelsSideBlock" hidden>
       <h2>Models</h2>
-      <div class="filter-note" style="margin-bottom:8px">Two tables, one selection. Click cells; row/column headers select a group; <b>All</b> clears/selects that table.</div>
       <div id="modelMatrixWrap"></div>
       <div class="filter-note" id="modelNote"></div>
     </div>
@@ -980,7 +979,7 @@ function updateModeNotes() {
     : (aOn
       ? (selMode === 'roi'
         ? 'Draw two boxes on Image A (ROI 1 = blue, ROI 2 = orange). Panel B mirrors A.'
-        : 'Same-image compare · use Whole image means, or switch to Bounding box for two ROIs.')
+        : '')
       : (selMode === 'roi'
         ? 'Two images · draw one bounding box on A and one on B (pair picker stays open).'
         : 'Two images · pick A/B below or Shift+click in the list, then compare whole chips.'));
