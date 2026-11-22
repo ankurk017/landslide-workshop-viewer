@@ -1,0 +1,2328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Landslide4Sense · Spectral &amp; Model Viewer</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #f3f1ec;
+  --surface: #fffdf9;
+  --ink: #1c2430;
+  --muted: #5c6b7a;
+  --line: #ddd6cb;
+  --line-strong: #c7bfb2;
+  --accent: #1f4e79;
+  --a: #0369a1;
+  --b: #c2410c;
+  --a-soft: rgba(3, 105, 161, 0.18);
+  --b-soft: rgba(194, 65, 12, 0.16);
+  --mask: #c62828;
+  --chip: #e11d48;
+  --sidebar-w: 344px;
+  --splitter-w: 6px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.4;
+}
+.shell {
+  width: 99%;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) var(--splitter-w) minmax(0, 1fr);
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+.shell.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+.shell.is-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+.sidebar {
+  border-right: none;
+  background: #f7f5f0;
+  padding: 16px 14px 28px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  min-width: 0;
+}
+.splitter {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  background: #efeae2;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 5;
+}
+.splitter::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 36px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--line-strong);
+  box-shadow: 4px 0 0 var(--line-strong);
+  opacity: 0.85;
+}
+.splitter:hover,
+.shell.is-resizing .splitter {
+  background: #e4ddd2;
+}
+.splitter:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.sidebar .brand {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.sidebar h1 {
+  margin: 0 0 14px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.side-block {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.side-block:last-child { border-bottom: none; }
+.side-block h2 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  appearance: none;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid #f0c8c8;
+  background: #fdf2f2;
+  color: #a66a6a;
+  cursor: pointer;
+}
+.tag:hover { border-color: #e8a8a8; color: #8f4e4e; }
+.tag.active {
+  color: #fff;
+  border-color: #2f6f4e;
+  background: #2f6f4e;
+}
+.tag.active:hover { background: #286043; border-color: #286043; color: #fff; }
+.tag:disabled { opacity: 0.45; cursor: not-allowed; }
+.mode-eval-tog {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+.mode-eval-tog:hover { border-color: var(--accent); }
+.mode-eval-tog.on {
+  border-color: var(--accent);
+  background: #eaf1f7;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.mode-eval-tog input { accent-color: var(--accent); width: 16px; height: 16px; }
+.mode-eval-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mode-eval-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.mode-eval-state {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
+.mode-eval-tog.on .mode-eval-state { color: var(--accent); }
+.filter-note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+.case-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+.case-chips .tag {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  padding: 4px 7px;
+  min-width: 0;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.25;
+}
+.case-chips .tag .pct {
+  display: block;
+  color: inherit;
+  opacity: 0.75;
+  font-size: 9px;
+}
+.case-chips .tag.active-a {
+  color: #fff;
+  background: var(--a);
+  border-color: var(--a);
+}
+.case-chips .tag.active-b {
+  color: #fff;
+  background: var(--b);
+  border-color: var(--b);
+}
+.case-chips .tag.active-a.active-b {
+  background: linear-gradient(90deg, var(--a) 50%, var(--b) 50%);
+  border-color: var(--accent);
+}
+.content {
+  min-width: 0;
+  padding: 8px 10px 28px;
+  background: var(--bg);
+}
+.top-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 28px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: #faf9f6;
+  font-size: 12px;
+}
+.overlays-bar, .selection-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.ob-label, .sel-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa5b1;
+}
+.overlays-bar .tag.mask-chip.active {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+.section { margin-bottom: 8px; }
+.section > h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.maps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+}
+@media (max-width: 980px) {
+  .shell { grid-template-columns: 1fr; }
+  .splitter { display: none; }
+  .sidebar { position: relative; height: auto; max-height: none; border-right: 1px solid var(--line); }
+  .maps { grid-template-columns: 1fr; }
+}
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  min-width: 0;
+}
+.panel.a { border-top: 2px solid var(--a); }
+.panel.b { border-top: 2px solid var(--b); }
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-head h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.panel.a h3 { color: var(--a); }
+.panel.b h3 { color: var(--b); }
+.panel-head .acq {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+.stage-wrap { position: relative; background: #e8eef2; aspect-ratio: 1; }
+.stage-wrap canvas.view { width: 100%; height: 100%; display: block; cursor: crosshair; image-rendering: pixelated; }
+.block {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+.block h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.muted { color: var(--muted); font-weight: 400; font-size: 12px; }
+.status { font-size: 12px; color: var(--muted); margin: 0 0 8px; font-family: "IBM Plex Mono", monospace; }
+.status.err { color: #9b2c2c; }
+.pdf-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+@media (max-width: 900px) { .pdf-grid { grid-template-columns: repeat(2, 1fr); } }
+.pdf-card {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px;
+  min-height: 200px;
+  background: #fff;
+}
+.pdf-card h4 { margin: 0 0 6px; font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.pdf-card canvas { width: 100% !important; height: 170px !important; }
+.chart-box { position: relative; height: 280px; }
+.legend-inline i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 8px; }
+.a-swatch { background: var(--a); }
+.b-swatch { background: var(--b); }
+.metrics-pane { font-size: 12px; display: flex; flex-direction: column; gap: 10px; }
+.metrics-pane table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.metrics-pane th, .metrics-pane td { border: 1px solid var(--line); padding: 5px 6px; text-align: left; }
+.metrics-pane th { color: var(--muted); font-weight: 500; background: #faf9f6; }
+.metrics-pane td.best { font-weight: 700; color: #1b5e3a; background: #e6f5ec; }
+.metrics-pane td.worst { font-weight: 600; color: #7a2e2e; background: #f9ecec; }
+.metrics-pane td.num { font-family: "IBM Plex Mono", monospace; text-align: right; }
+.plot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.plot-grid img { width: 100%; border: 1px solid var(--line); background: #fff; }
+.confmat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.confmat-card {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 7px;
+  background: #fff;
+}
+.confmat-card h4 { margin: 0 0 5px; font-size: 11px; font-weight: 600; }
+.confmat-table { width: 100%; border-collapse: collapse; font-family: "IBM Plex Mono", monospace; font-size: 10px; text-align: center; }
+.confmat-table th, .confmat-table td { border: 1px solid var(--line); padding: 4px 5px; }
+.confmat-table th { background: rgba(255,255,255,0.7); color: var(--muted); font-weight: 500; }
+.confmat-table .tp { background: #eaf5ee; }
+.confmat-table .tn { background: #f3f1ec; }
+.confmat-table .fp { background: #f9ecec; }
+.confmat-table .fn { background: #fbf3e0; }
+.eval-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.eval-gallery.compare-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.eval-gallery .eg-row {
+  display: grid;
+  gap: 10px;
+}
+.eval-gallery .eg-row.row-main,
+.eval-gallery .eg-row.row-errors {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.eval-gallery .eg-card.eg-spacer {
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+}
+.eval-gallery .eg-card img {
+  aspect-ratio: 1;
+  object-fit: contain;
+  width: 100%;
+}
+@media (max-width: 900px) {
+  .eval-gallery .eg-row.row-main,
+  .eval-gallery .eg-row.row-errors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .eval-gallery .eg-card.eg-spacer { display: none; }
+}
+.eval-gallery .eg-card {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px;
+  text-align: center;
+  background: #fff;
+}
+.eval-gallery .eg-card h5 { margin: 0 0 6px; font-size: 10px; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.eval-gallery .eg-card img { width: 100%; image-rendering: pixelated; background: #eef2f6; border: 1px solid var(--line); }
+.eval-gallery .eg-card img.eg-error { background: #fff; }
+.eval-gallery .eg-card.model-a h5 { color: var(--a); }
+.eval-gallery .eg-card.model-b h5 { color: var(--b); }
+.slide-deck {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 10px 12px 14px;
+}
+.slide-deck .slide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.slide-deck .slide-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  font-family: "IBM Plex Mono", monospace;
+}
+.slide-deck .slide-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slide-deck .slide-nav .tag {
+  min-width: 64px;
+  text-align: center;
+}
+.slide-deck .slide-count {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 64px;
+  text-align: center;
+}
+.slide-deck .slide-frame {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 280px;
+  background: #faf9f6;
+  border: 1px solid var(--line);
+  padding: 8px;
+}
+.slide-deck .slide-frame img {
+  max-width: 100%;
+  max-height: 520px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  background: #fff;
+}
+.slide-deck .cmp-chart-wrap {
+  width: 100%;
+  height: 420px;
+  position: relative;
+  background: #fff;
+  padding: 8px 12px 4px;
+}
+.slide-deck .slide-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+@media (max-width: 900px) {
+  .slide-deck .slide-pair { grid-template-columns: 1fr; }
+}
+.slide-deck .slide-pair .pair-col {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 6px;
+  text-align: center;
+}
+.slide-deck .slide-pair .pair-col h5 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.slide-deck .slide-pair img {
+  max-width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+}
+.empty-hint { color: var(--muted); font-size: 12px; }
+.stat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.stat-chip {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+.pick-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+.pick-row select {
+  font: inherit;
+  font-size: 12px;
+  font-family: "IBM Plex Mono", monospace;
+  padding: 5px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  max-width: 100%;
+}
+.hidden { display: none !important; }
+.model-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  table-layout: fixed;
+}
+.model-matrix th,
+.model-matrix td {
+  border: 1px solid var(--line);
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+}
+.model-matrix th {
+  background: #efeae2;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 9px;
+  line-height: 1.2;
+  padding: 6px 3px;
+}
+.model-matrix th.corner,
+.model-matrix th.row-head,
+.model-matrix th.col-head {
+  cursor: pointer;
+  user-select: none;
+}
+.model-matrix th.corner:hover,
+.model-matrix th.row-head:hover,
+.model-matrix th.col-head:hover {
+  background: #e4ddd2;
+  color: var(--ink);
+}
+.model-matrix th.row-head {
+  text-align: left;
+  padding-left: 6px;
+  width: 58px;
+}
+.model-matrix .mcell {
+  appearance: none;
+  width: 100%;
+  min-height: 34px;
+  margin: 0;
+  border: 0;
+  background: #fdf2f2;
+  color: #a66a6a;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 6px 2px;
+  line-height: 1.15;
+}
+.model-matrix .mcell:hover { background: #f8e4e4; color: #8f4e4e; }
+.model-matrix .mcell.active {
+  background: #2f6f4e;
+  color: #fff;
+}
+.model-matrix .mcell.active:hover { background: #286043; }
+.model-matrix .mcell:disabled,
+.model-matrix .mcell.empty {
+  background: #f3f1ec;
+  color: #b7b0a6;
+  cursor: default;
+  opacity: 0.7;
+}
+.model-matrix .mcell .miou {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 9px;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+.matrix-block { margin-bottom: 12px; }
+.matrix-block h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.matrix-block .matrix-sub {
+  margin: 0 0 6px;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">Landslide4Sense</div>
+    <h1>Spectral &amp; model review</h1>
+
+    <div class="side-block">
+      <h2>Landslide filter</h2>
+      <div class="tag-row" id="lsFilterTags">
+        <button type="button" class="tag" data-ls="all">All</button>
+        <button type="button" class="tag active" data-ls="hi30">&gt;30% landslide</button>
+      </div>
+      <div class="filter-note" id="lsFilterNote"></div>
+    </div>
+
+    <div class="side-block">
+      <h2>Split</h2>
+      <div class="tag-row" id="splitTags">
+        <button type="button" class="tag active" data-split="train">Train</button>
+        <button type="button" class="tag active" data-split="validation">Val</button>
+        <button type="button" class="tag active" data-split="test">Test</button>
+      </div>
+    </div>
+
+    <div class="side-block">
+      <h2>Mode</h2>
+      <label class="mode-eval-tog" id="modeEvalLab" title="Off: spectral review. On: model predictions &amp; metrics.">
+        <input type="checkbox" id="togModelEval"/>
+        <span class="mode-eval-text">
+          <span class="mode-eval-title">Model evaluation</span>
+          <span class="mode-eval-state" id="modeEvalState">Off</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="side-block">
+      <h2>Compare mode</h2>
+      <div class="tag-row">
+        <button type="button" class="tag active" id="cmpModeA" title="Two boxes on the same image">A · same image</button>
+        <button type="button" class="tag" id="cmpModeB" title="Compare two different images">B · two images</button>
+      </div>
+      <div class="filter-note" id="cmpModeNote">Draw two boxes on image A (ROI 1 vs ROI 2).</div>
+    </div>
+
+    <div class="side-block" id="modelsSideBlock" hidden>
+      <h2>Models</h2>
+      <div class="filter-note" style="margin-bottom:8px">Two tables, one selection. Click cells; row/column headers select a group; <b>All</b> clears/selects that table.</div>
+      <div id="modelMatrixWrap"></div>
+      <div class="filter-note" id="modelNote"></div>
+    </div>
+
+    <div class="side-block" id="evalScopeBlock" hidden>
+      <h2>Eval scope</h2>
+      <div class="tag-row">
+        <button type="button" class="tag" id="scopeImage" title="Metrics for the selected image">This image</button>
+        <button type="button" class="tag active" id="scopeTest" title="Full test-set metrics, curves, confusion">Test set (all)</button>
+      </div>
+      <div class="filter-note" id="evalScopeNote">Showing results for the selected image only.</div>
+    </div>
+
+    <div class="side-block">
+      <h2>Images <span class="muted" id="listCount"></span></h2>
+      <div class="filter-note">Click = A · Shift+click = B</div>
+      <div class="case-chips" id="imageList" role="listbox" aria-label="Images"></div>
+    </div>
+  </aside>
+
+  <button type="button" class="splitter" id="sidebarSplitter" title="Drag to resize sidebar" aria-label="Resize sidebar" aria-orientation="vertical"></button>
+
+  <main class="content">
+    <div class="top-controls">
+      <div class="overlays-bar">
+        <span class="ob-label">Overlays</span>
+        <div class="tag-row">
+          <button type="button" class="tag mask-chip active" id="togMask" aria-pressed="true">Landslide mask</button>
+          <button type="button" class="tag" id="togPred" aria-pressed="false" hidden>Pred overlay</button>
+          <button type="button" class="tag" id="togError" aria-pressed="false" hidden>Error map</button>
+        </div>
+        <span class="ob-label" style="margin-left:4px">Compare</span>
+        <div class="tag-row">
+          <button type="button" class="tag active" id="cmpModeATop" title="Two boxes on the same image">A · same image</button>
+          <button type="button" class="tag" id="cmpModeBTop" title="Compare two different images">B · two images</button>
+        </div>
+      </div>
+      <div class="selection-bar">
+        <span class="sel-label">Selection</span>
+        <div class="tag-row">
+          <button type="button" class="tag active" id="selWhole">Whole image</button>
+          <button type="button" class="tag" id="selRoi">Bounding box</button>
+          <button type="button" class="tag" id="clearRoi">Clear boxes</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="block" id="wholePickBlock">
+      <h3>Image pair</h3>
+      <p class="status" id="pairPickHint">Pick two catalog images (or Shift+click in the list). Stays available with bounding boxes in B mode.</p>
+      <div class="pick-row">
+        <label>Image A
+          <select id="pickA"></select>
+        </label>
+        <label>Image B
+          <select id="pickB"></select>
+        </label>
+        <button type="button" class="tag active" id="runWholePair">Apply pair</button>
+      </div>
+    </div>
+
+    <section class="section">
+      <h2>Context panels</h2>
+      <div class="maps">
+        <section class="panel a">
+          <div class="panel-head">
+            <h3>Image A</h3>
+            <div class="acq" id="metaA">—</div>
+          </div>
+          <div class="stage-wrap"><canvas class="view" id="canvasA" width="512" height="512"></canvas></div>
+        </section>
+        <section class="panel b">
+          <div class="panel-head">
+            <h3 id="panelBTitle">Image B / ROI 2</h3>
+            <div class="acq" id="metaB">—</div>
+          </div>
+          <div class="stage-wrap"><canvas class="view" id="canvasB" width="512" height="512"></canvas></div>
+        </section>
+      </div>
+    </section>
+
+    <div class="block" id="evalBlock" hidden>
+      <h3>Model evaluation <span class="muted" id="evalScopeHint"></span></h3>
+      <div class="tag-row" id="evalLsFilterTags" style="margin:8px 0 10px" title="Filter test metrics by GT landslide %">
+        <button type="button" class="tag active" data-eval-ls="all">All</button>
+        <button type="button" class="tag" data-eval-ls="hi30">≥30% LS</button>
+        <button type="button" class="tag" data-eval-ls="hi50">≥50% LS</button>
+      </div>
+      <div class="filter-note" id="evalLsFilterNote" style="margin:-4px 0 10px">Full test set (all patches).</div>
+      <div class="metrics-pane" id="modelMetricsPane"><div class="empty-hint">Enable models on the left.</div></div>
+      <div id="confmatGrid" class="confmat-grid" style="margin-top:12px"></div>
+      <div id="evalCaseGallery" class="eval-gallery" style="margin-top:12px"></div>
+      <div class="plot-grid" id="modelPlotGrid" style="margin-top:12px"></div>
+      <div class="slide-deck" id="evalSlideDeck" hidden>
+        <div class="slide-head">
+          <h4 class="slide-title" id="slideTitle">Plots</h4>
+          <div class="slide-nav">
+            <button type="button" class="tag" id="slidePrev">‹ Prev</button>
+            <span class="slide-count" id="slideCount">0 / 0</span>
+            <button type="button" class="tag" id="slideNext">Next ›</button>
+          </div>
+        </div>
+        <div class="slide-frame" id="slideFrame"></div>
+      </div>
+    </div>
+
+    <div class="block" id="spectraBlockPdfs">
+      <h3>Band PDFs <span class="legend-inline"><i class="a-swatch"></i>A <i class="b-swatch"></i>B</span></h3>
+      <p class="status" id="analysisStatus">Load images to compute spectra.</p>
+      <div class="pdf-grid" id="pdfGrid"></div>
+    </div>
+
+    <div class="block" id="spectraBlockSig">
+      <h3>Spectral signature <span class="muted" id="spectralScopeHint">(whole-image mean)</span></h3>
+      <div class="chart-box"><canvas id="spectralChart"></canvas></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const H = 128, W = 128, NB = 6;
+/** Landslide4Sense H5 stores band / dataset_mean (iarai issue #4). Recover ≈S2 reflectance. */
+const L4S_BAND_MEANS_14 = [
+  1111.81236406, 824.63171476, 663.41636217, 445.17289745, 645.8582926,
+  1547.73508126, 1960.44401001, 1941.32229668, 674.07572865, 9.04787384,
+  1113.98338755, 519.90397929, 20.29228266, 772.83144788
+];
+// Prithvi 6-band indices inside the 14-channel stack
+const L4S_BAND_IDX = [1, 2, 3, 7, 10, 11];
+const L4S_REFL_SCALE = L4S_BAND_IDX.map(i => L4S_BAND_MEANS_14[i] / 10000);
+function toReflectance(bandIndex, v) {
+  return v * L4S_REFL_SCALE[bandIndex];
+}
+/** Sentinel-2 / HLS central wavelengths (nm) for the 6 Prithvi L4S bands. */
+const BAND_WAVELENGTH_NM = {
+  BLUE: 490, B2: 490, B02: 490,
+  GREEN: 560, B3: 560, B03: 560,
+  RED: 665, B4: 665, B04: 665,
+  NIR_BROAD: 842, B8: 842, B08: 842,
+  SWIR_1: 1610, B11: 1610,
+  SWIR_2: 2190, B12: 2190,
+};
+function bandWavelengthNm(nameOrKey) {
+  if (nameOrKey == null) return null;
+  if (CATALOG && Array.isArray(CATALOG.band_wavelengths_nm) && Array.isArray(CATALOG.bands)) {
+    const keys = CATALOG.bands;
+    const i = keys.indexOf(nameOrKey);
+    if (i >= 0 && CATALOG.band_wavelengths_nm[i] != null) return CATALOG.band_wavelengths_nm[i];
+  }
+  const s = String(nameOrKey);
+  const key = s.toUpperCase().split(/[\s(/]/)[0];
+  const m = s.toUpperCase().match(/\b(B0?\d{1,2}|B8A)\b/);
+  if (m && BAND_WAVELENGTH_NM[m[1]] != null) return BAND_WAVELENGTH_NM[m[1]];
+  return BAND_WAVELENGTH_NM[key] != null ? BAND_WAVELENGTH_NM[key] : null;
+}
+function bandAxisLabel(name, key) {
+  const wl = bandWavelengthNm(key || name);
+  const base = name || key || '—';
+  return wl != null ? `${base} · ${wl} nm` : String(base);
+}
+function bandPdfTitle(name, key) {
+  const wl = bandWavelengthNm(key || name);
+  const base = name || key || '—';
+  return wl != null ? `${base} · ${wl} nm` : String(base);
+}
+let CATALOG = null;
+let MODEL_REG = null;
+let modelGlobals = {};
+let modelCase = {};
+let activeModels = new Set();
+let modelEvalOn = false;
+let modelSize = '300_tm'; // kept for legacy note text; matrix is primary selector
+let metricsScope = 'test'; // image | test
+let evalLsFilter = 'all'; // all | hi30 | hi50  (test-set metrics filter)
+let modelMatrixBooted = false;
+let cmpMode = 'A'; // A = two boxes same image; B = two images
+let selMode = 'whole'; // whole | roi
+let lsFilter = 'hi30'; // all | hi30
+let splitOn = new Set(['train', 'validation', 'test']);
+let showMask = true, showPred = false, showError = false;
+
+let idA = null, idB = null;
+let cache = {}; // id -> {meta, rgb, label, bands:Float32Array, spectra}
+let roiA = null, roiB = null; // {x0,y0,x1,y1} in pixel coords
+let drawing = null; // {which:'A'|'B', start, cur}
+let spectralChart = null;
+let pdfCharts = [];
+let slideItems = []; // {title, html} or {title, src} or {title, pair:[{label,src},...]} or {title, chart:'compare'}
+let compareChart = null;
+const MODEL_PALETTE = ['#0369a1', '#c2410c', '#2f6f4e', '#7c3aed', '#b45309'];
+let slideIdx = 0;
+
+const $ = (id) => document.getElementById(id);
+
+function filteredImages() {
+  if (!CATALOG) return [];
+  return CATALOG.images.filter(im => {
+    if (!splitOn.has(im.split)) return false;
+    if (lsFilter === 'hi30' && !(im.landslide_pct >= (CATALOG.landslide_pct_threshold || 0.3))) return false;
+    return true;
+  });
+}
+
+function renderList() {
+  const list = $('imageList');
+  const imgs = filteredImages();
+  $('listCount').textContent = `(${imgs.length})`;
+  $('lsFilterNote').textContent = lsFilter === 'hi30'
+    ? `Showing patches with ≥${Math.round((CATALOG.landslide_pct_threshold||0.3)*100)}% landslide pixels.`
+    : `Showing all patches in selected splits (${CATALOG.n_images} total in catalog).`;
+  list.innerHTML = '';
+  imgs.forEach(im => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tag';
+    btn.dataset.id = im.id;
+    btn.title = `${im.id} · ${(im.landslide_pct*100).toFixed(1)}% LS`;
+    // Compact tile label like hail case chips
+    const short = im.id.replace('validation/', 'val/').replace('image_', '');
+    btn.innerHTML = `${short}<span class="pct">${(im.landslide_pct*100).toFixed(0)}%</span>`;
+    if (im.id === idA) btn.classList.add('active-a');
+    if (im.id === idB) btn.classList.add('active-b');
+    btn.onclick = (ev) => {
+      if (modelEvalOn || cmpMode === 'A') {
+        setImage('A', im.id);
+        idB = idA;
+      } else if (ev.shiftKey) {
+        setImage('B', im.id);
+      } else {
+        setImage('A', im.id);
+        if (!idB) idB = im.id;
+      }
+      renderList();
+      refreshAll();
+    };
+    list.appendChild(btn);
+  });
+  populatePickers(imgs);
+}
+
+function populatePickers(imgs) {
+  for (const selId of ['pickA', 'pickB']) {
+    const sel = $(selId);
+    const prev = sel.value;
+    sel.innerHTML = imgs.map(im =>
+      `<option value="${im.id}">${im.id} (${(im.landslide_pct*100).toFixed(1)}%)</option>`
+    ).join('');
+    if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+    else if (imgs.length) sel.value = imgs[selId === 'pickA' ? 0 : Math.min(1, imgs.length-1)].id;
+  }
+}
+
+async function loadImagePack(id) {
+  if (!id) return null;
+  if (cache[id]) return cache[id];
+  const meta = CATALOG.images.find(x => x.id === id);
+  if (!meta) throw new Error('Unknown id ' + id);
+  const [rgb, label, spectra, bandBuf] = await Promise.all([
+    loadHtmlImage(meta.assets.rgb),
+    loadHtmlImage(meta.assets.label),
+    fetch(meta.assets.spectra).then(r => r.json()),
+    fetch(meta.assets.bands).then(r => r.arrayBuffer()),
+  ]);
+  const f16 = new Float16ArrayCompat(bandBuf);
+  const bands = new Float32Array(NB * H * W);
+  for (let i = 0; i < bands.length; i++) bands[i] = f16.get(i);
+  cache[id] = { meta, rgb, label, spectra, bands };
+  return cache[id];
+}
+
+/** Minimal float16 decoder (no native Float16Array required). */
+function Float16ArrayCompat(buf) {
+  this.u16 = new Uint16Array(buf);
+}
+Float16ArrayCompat.prototype.get = function(i) {
+  const u = this.u16[i];
+  const s = (u & 0x8000) >> 15;
+  const e = (u & 0x7C00) >> 10;
+  const f = u & 0x03FF;
+  if (e === 0) return (s ? -1 : 1) * Math.pow(2, -14) * (f / Math.pow(2, 10));
+  if (e === 0x1F) return f ? NaN : ((s ? -1 : 1) * Infinity);
+  return (s ? -1 : 1) * Math.pow(2, e - 15) * (1 + f / Math.pow(2, 10));
+};
+
+function loadHtmlImage(src) {
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('Failed ' + src));
+    im.src = src;
+  });
+}
+
+function setImage(which, id) {
+  if (which === 'A') idA = id;
+  else idB = id;
+}
+
+function setCmpMode(mode) {
+  if (modelEvalOn && mode === 'B') return; // single-image only in model eval
+  cmpMode = mode;
+  roiA = roiB = null;
+  refreshAll();
+}
+
+function updateModeNotes() {
+  const aOn = cmpMode === 'A';
+  ['cmpModeA', 'cmpModeATop'].forEach(id => { const el = $(id); if (el) el.classList.toggle('active', aOn); });
+  ['cmpModeB', 'cmpModeBTop'].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.classList.toggle('active', !aOn);
+    el.disabled = !!modelEvalOn;
+    el.title = modelEvalOn
+      ? 'Disabled in model evaluation (single image only)'
+      : 'Compare two different images';
+  });
+  $('cmpModeNote').textContent = modelEvalOn
+    ? 'Model evaluation uses a single selected image.'
+    : (aOn
+      ? (selMode === 'roi'
+        ? 'Draw two boxes on Image A (ROI 1 = blue, ROI 2 = orange). Panel B mirrors A.'
+        : 'Same-image compare · use Whole image means, or switch to Bounding box for two ROIs.')
+      : (selMode === 'roi'
+        ? 'Two images · draw one bounding box on A and one on B (pair picker stays open).'
+        : 'Two images · pick A/B below or Shift+click in the list, then compare whole chips.'));
+  $('panelBTitle').textContent = aOn ? 'Image A (mirror) / ROI context' : 'Image B';
+  // Keep the A/B pair picker visible in B mode even when Bounding box is on
+  $('wholePickBlock').classList.toggle('hidden', modelEvalOn || cmpMode !== 'B');
+  const pairHint = $('pairPickHint');
+  if (pairHint) {
+    pairHint.textContent = selMode === 'roi'
+      ? 'Pick Image A and Image B, then draw one box on each canvas.'
+      : 'Pick two catalog images to compare full-chip spectra (or Shift+click in the list).';
+  }
+  $('selWhole').classList.toggle('active', selMode === 'whole');
+  $('selRoi').classList.toggle('active', selMode === 'roi');
+}
+
+function applyModelEvalUI() {
+  $('modeEvalLab').classList.toggle('on', modelEvalOn);
+  $('modeEvalState').textContent = modelEvalOn ? 'On' : 'Off';
+  $('togModelEval').checked = modelEvalOn;
+  $('modelsSideBlock').hidden = !modelEvalOn;
+  $('evalScopeBlock').hidden = !modelEvalOn;
+  $('evalBlock').hidden = !modelEvalOn;
+  $('spectraBlockPdfs').classList.toggle('hidden', modelEvalOn);
+  $('spectraBlockSig').classList.toggle('hidden', modelEvalOn);
+  $('wholePickBlock').classList.toggle('hidden', modelEvalOn || cmpMode !== 'B');
+  $('togPred').hidden = !modelEvalOn;
+  $('togError').hidden = !modelEvalOn;
+  $('scopeImage').classList.toggle('active', metricsScope === 'image');
+  $('scopeTest').classList.toggle('active', metricsScope === 'test');
+  $('evalScopeNote').textContent = metricsScope === 'image'
+    ? 'Showing results for the selected image only.'
+    : 'Showing full test-set metrics, curves, and comparison plots.';
+  const evalLsLabel = evalLsFilter === 'hi30' ? '≥30% LS' : (evalLsFilter === 'hi50' ? '≥50% LS' : 'all');
+  $('evalScopeHint').textContent = metricsScope === 'image'
+    ? '(this image)'
+    : `(test set · ${evalLsLabel})`;
+  const evalLsRow = $('evalLsFilterTags');
+  if (evalLsRow) evalLsRow.hidden = metricsScope !== 'test';
+  const evalLsNote = $('evalLsFilterNote');
+  if (evalLsNote) {
+    evalLsNote.hidden = metricsScope !== 'test';
+    evalLsNote.textContent = evalLsFilter === 'hi30'
+      ? 'Metrics over test patches with ≥30% GT landslide pixels.'
+      : (evalLsFilter === 'hi50'
+        ? 'Metrics over test patches with ≥50% GT landslide pixels.'
+        : 'Full test set (all patches).');
+  }
+  document.querySelectorAll('#evalLsFilterTags .tag').forEach(b => {
+    b.classList.toggle('active', b.dataset.evalLs === evalLsFilter);
+  });
+  if (modelEvalOn && cmpMode !== 'A') {
+    cmpMode = 'A';
+    idB = idA;
+    roiA = roiB = null;
+  }
+  updateModeNotes();
+}
+
+async function refreshAll() {
+  updateModeNotes();
+  applyModelEvalUI();
+  try {
+    if (cmpMode === 'A') {
+      if (!idA) {
+        const imgs = filteredImages();
+        if (imgs.length) idA = imgs[0].id;
+      }
+      idB = idA;
+    } else {
+      if (!idA) {
+        const imgs = filteredImages();
+        if (imgs.length) { idA = imgs[0].id; idB = imgs[Math.min(1, imgs.length-1)].id; }
+      }
+      if (!idB) idB = idA;
+    }
+    const packA = await loadImagePack(idA);
+    const packB = await loadImagePack(idB);
+    $('metaA').textContent = packA ? `${idA} · LS ${(packA.meta.landslide_pct*100).toFixed(1)}%` : '—';
+    $('metaB').textContent = packB ? `${idB} · LS ${(packB.meta.landslide_pct*100).toFixed(1)}%` : '—';
+    await drawStage('A', packA, roiA);
+    await drawStage('B', packB, cmpMode === 'A' ? roiB : roiB);
+    if (!modelEvalOn) await renderSpectra(packA, packB);
+    else await renderModelEval(packA, packB);
+    renderList();
+  } catch (err) {
+    setStatus(String(err.message || err), true);
+  }
+}
+
+async function drawStage(which, pack, roi) {
+  const canvas = $(which === 'A' ? 'canvasA' : 'canvasB');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!pack) return;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(pack.rgb, 0, 0, canvas.width, canvas.height);
+  if (showMask) {
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(pack.label, 0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 1;
+  }
+  if (modelEvalOn && (showPred || showError)) {
+    const mid = [...activeModels][0];
+    if (mid) {
+      const cm = await ensureCaseMetrics(mid);
+      const row = cm && cm[pack.meta.id];
+      if (row) {
+        if (showError && row.error) {
+          const im = await loadHtmlImage(row.error);
+          ctx.globalAlpha = 0.7;
+          ctx.drawImage(im, 0, 0, canvas.width, canvas.height);
+          ctx.globalAlpha = 1;
+        } else if (showPred && row.pred) {
+          const im = await loadHtmlImage(row.pred);
+          ctx.drawImage(im, 0, 0, canvas.width, canvas.height);
+        }
+      }
+    }
+  }
+  // draw both rois on A; on B draw roiB (or both in mode A)
+  const scale = canvas.width / W;
+  const drawRoi = (r, color, label) => {
+    if (!r) return;
+    const x = Math.min(r.x0, r.x1) * scale;
+    const y = Math.min(r.y0, r.y1) * scale;
+    const w = Math.abs(r.x1 - r.x0) * scale;
+    const h = Math.abs(r.y1 - r.y0) * scale;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 0.5, y + 0.5, w, h);
+    ctx.fillStyle = color;
+    ctx.font = '12px IBM Plex Sans';
+    ctx.fillText(label, x + 4, Math.max(12, y - 4));
+  };
+  if (which === 'A') {
+    drawRoi(roiA, '#0369a1', 'ROI 1');
+    if (cmpMode === 'A') drawRoi(roiB, '#c2410c', 'ROI 2');
+  } else {
+    if (cmpMode === 'A') {
+      drawRoi(roiA, '#0369a1', 'ROI 1');
+      drawRoi(roiB, '#c2410c', 'ROI 2');
+    } else {
+      drawRoi(roiB, '#c2410c', 'ROI B');
+    }
+  }
+  if (drawing && drawing.which === which) drawRoi({x0:drawing.start.x,y0:drawing.start.y,x1:drawing.cur.x,y1:drawing.cur.y}, '#22c55e', '…');
+}
+
+function canvasToPixel(canvas, clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(W - 1, Math.floor((clientX - rect.left) / rect.width * W)));
+  const y = Math.max(0, Math.min(H - 1, Math.floor((clientY - rect.top) / rect.height * H)));
+  return {x, y};
+}
+
+function bindDraw(canvas, which) {
+  canvas.addEventListener('mousedown', (ev) => {
+    if (selMode !== 'roi' || modelEvalOn) return;
+    const p = canvasToPixel(canvas, ev.clientX, ev.clientY);
+    drawing = { which, start: p, cur: p };
+  });
+  canvas.addEventListener('mousemove', (ev) => {
+    if (!drawing || drawing.which !== which) return;
+    drawing.cur = canvasToPixel(canvas, ev.clientX, ev.clientY);
+    refreshAll();
+  });
+  window.addEventListener('mouseup', async () => {
+    if (!drawing || drawing.which !== which) return;
+    const r = {
+      x0: drawing.start.x, y0: drawing.start.y,
+      x1: drawing.cur.x, y1: drawing.cur.y
+    };
+    drawing = null;
+    if (Math.abs(r.x1 - r.x0) < 2 || Math.abs(r.y1 - r.y0) < 2) { refreshAll(); return; }
+    if (cmpMode === 'A') {
+      if (!roiA) roiA = r;
+      else if (!roiB) roiB = r;
+      else { roiA = r; roiB = null; }
+    } else {
+      if (which === 'A') roiA = r; else roiB = r;
+    }
+    await refreshAll();
+  });
+}
+
+function meanBandsInRoi(bands, roi) {
+  if (!bands) return null;
+  if (!roi) {
+    // whole image — convert to reflectance
+    const means = new Array(NB).fill(0);
+    const n = H * W;
+    for (let b = 0; b < NB; b++) {
+      let s = 0;
+      const off = b * n;
+      for (let i = 0; i < n; i++) s += toReflectance(b, bands[off + i]);
+      means[b] = s / n;
+    }
+    return { means, n };
+  }
+  const x0 = Math.min(roi.x0, roi.x1), x1 = Math.max(roi.x0, roi.x1);
+  const y0 = Math.min(roi.y0, roi.y1), y1 = Math.max(roi.y0, roi.y1);
+  const means = new Array(NB).fill(0);
+  let n = 0;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const i = y * W + x;
+      for (let b = 0; b < NB; b++) means[b] += toReflectance(b, bands[b * H * W + i]);
+      n++;
+    }
+  }
+  if (!n) return null;
+  return { means: means.map(v => v / n), n };
+}
+
+function histFromSpectra(spectra) {
+  // whole-image precomputed pdf — convert standardized H5 units → reflectance
+  return (spectra.bands || []).map((b, i) => {
+    const scale = L4S_REFL_SCALE[i] || 1;
+    const x = ((b.all && b.all.x) || []).map(v => v * scale);
+    const pdf = ((b.all && b.all.pdf) || []).map(p => p / scale); // density adjusts with dx
+    const mean = b.all && b.all.mean != null ? b.all.mean * scale : null;
+    return { name: b.name, mean, x, pdf };
+  });
+}
+
+function collectRoiValues(bands, roi) {
+  /** Per-band reflectance samples inside roi (or whole chip if roi null). */
+  if (!bands) return null;
+  const vals = Array.from({ length: NB }, () => []);
+  const x0 = roi ? Math.min(roi.x0, roi.x1) : 0;
+  const x1 = roi ? Math.max(roi.x0, roi.x1) : W - 1;
+  const y0 = roi ? Math.min(roi.y0, roi.y1) : 0;
+  const y1 = roi ? Math.max(roi.y0, roi.y1) : H - 1;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const i = y * W + x;
+      for (let b = 0; b < NB; b++) {
+        const v = bands[b * H * W + i];
+        if (Number.isFinite(v)) vals[b].push(toReflectance(b, v));
+      }
+    }
+  }
+  return vals;
+}
+
+function histFromValues(values, nBins = 32) {
+  if (!values || !values.length) return { x: [], pdf: [], mean: null };
+  let lo = Infinity, hi = -Infinity, sum = 0;
+  for (const v of values) { if (v < lo) lo = v; if (v > hi) hi = v; sum += v; }
+  if (!(hi > lo)) { hi = lo + 1e-3; }
+  // 1–99 style trim via simple percentile approx
+  const sorted = values.slice().sort((a, b) => a - b);
+  const p = (q) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(q * (sorted.length - 1))))];
+  lo = p(0.01); hi = p(0.99);
+  if (!(hi > lo)) { hi = lo + 1e-3; }
+  const counts = new Array(nBins).fill(0);
+  const width = (hi - lo) / nBins;
+  for (const v of values) {
+    if (v < lo || v > hi) continue;
+    let bin = Math.floor((v - lo) / width);
+    if (bin >= nBins) bin = nBins - 1;
+    if (bin < 0) bin = 0;
+    counts[bin]++;
+  }
+  const n = counts.reduce((a, b) => a + b, 0) || 1;
+  const x = [], pdf = [];
+  for (let i = 0; i < nBins; i++) {
+    x.push(lo + (i + 0.5) * width);
+    pdf.push(counts[i] / (n * width)); // density
+  }
+  return { x, pdf, mean: sum / values.length };
+}
+
+function histFromRoi(bands, roi, bandNames) {
+  const vals = collectRoiValues(bands, roi);
+  if (!vals) return null;
+  return vals.map((v, i) => {
+    const h = histFromValues(v);
+    return { name: bandNames[i] || `band ${i}`, mean: h.mean, x: h.x, pdf: h.pdf };
+  });
+}
+
+function setStatus(msg, err=false) {
+  const el = $('analysisStatus');
+  el.textContent = msg;
+  el.classList.toggle('err', !!err);
+}
+
+async function renderSpectra(packA, packB) {
+  pdfCharts.forEach(c => c.destroy());
+  pdfCharts = [];
+  $('pdfGrid').innerHTML = '';
+  if (spectralChart) { spectralChart.destroy(); spectralChart = null; }
+  if (!packA || !packB) { setStatus('Select images first.'); return; }
+
+  let meansA, meansB, labelA, labelB, nA, nB;
+  if (selMode === 'whole') {
+    // Prefer live reflectance from band cubes; fall back to scaled spectra JSON
+    const ra = meanBandsInRoi(packA.bands, null);
+    const rb = meanBandsInRoi(packB.bands, null);
+    meansA = ra ? ra.means : (packA.spectra.bands || []).map((b, i) => toReflectance(i, b.all.mean));
+    meansB = rb ? rb.means : (packB.spectra.bands || []).map((b, i) => toReflectance(i, b.all.mean));
+    labelA = `A ${packA.meta.id}`;
+    labelB = `B ${packB.meta.id}`;
+    nA = packA.spectra.n_pixels; nB = packB.spectra.n_pixels;
+    $('spectralScopeHint').textContent = '(whole-image mean reflectance, 6 Prithvi bands)';
+    setStatus(`Whole image · A ${packA.meta.id} vs B ${packB.meta.id}`);
+  } else {
+    const ra = meanBandsInRoi(packA.bands, roiA);
+    const rb = meanBandsInRoi(cmpMode === 'A' ? packA.bands : packB.bands, roiB);
+    if (!ra || !rb) {
+      setStatus('Draw two bounding boxes to compare spectra.', true);
+      $('spectralScopeHint').textContent = '(bounding-box mean reflectance)';
+      return;
+    }
+    meansA = ra.means; meansB = rb.means; nA = ra.n; nB = rb.n;
+    labelA = cmpMode === 'A' ? `ROI 1 (${nA} px)` : `A ROI (${nA} px)`;
+    labelB = cmpMode === 'A' ? `ROI 2 (${nB} px)` : `B ROI (${nB} px)`;
+    $('spectralScopeHint').textContent = '(bounding-box mean reflectance, 6 Prithvi bands)';
+    setStatus(`Bounding box · ${labelA} vs ${labelB}`);
+  }
+
+  const bandKeys = CATALOG.bands || [];
+  const bandNames = CATALOG.band_labels || bandKeys;
+  const labels = bandNames.map((name, i) => bandAxisLabel(name, bandKeys[i]));
+  spectralChart = new Chart($('spectralChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: labelA, data: meansA, borderColor: '#0369a1', backgroundColor: 'rgba(3,105,161,0.15)', tension: 0.15 },
+        { label: labelB, data: meansB, borderColor: '#c2410c', backgroundColor: 'rgba(194,65,12,0.12)', tension: 0.15 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const i = items[0] && items[0].dataIndex;
+              return labels[i] || '';
+            },
+          },
+        },
+      },
+      scales: {
+        y: { title: { display: true, text: 'Reflectance' }, min: 0 },
+        x: {
+          title: { display: true, text: 'Band · central wavelength (nm)' },
+          ticks: { maxRotation: 45, minRotation: 0, autoSkip: false, font: { size: 10 } },
+        },
+      },
+    },
+  });
+
+  let ha, hb;
+  if (selMode === 'whole') {
+    ha = histFromSpectra(packA.spectra);
+    hb = histFromSpectra(packB.spectra);
+  } else {
+    // Crop pixels inside each ROI and build PDFs from those values
+    const bandsB = cmpMode === 'A' ? packA.bands : packB.bands;
+    ha = histFromRoi(packA.bands, roiA, bandNames);
+    hb = histFromRoi(bandsB, roiB, bandNames);
+    if (!ha || !hb) {
+      setStatus('Draw two bounding boxes to compare spectra.', true);
+      return;
+    }
+  }
+  ha.forEach((band, i) => {
+    const card = document.createElement('div');
+    card.className = 'pdf-card';
+    const title = bandPdfTitle(band.name || bandNames[i], bandKeys[i]);
+    card.innerHTML = `<h4>${title}</h4><canvas height="180"></canvas>`;
+    $('pdfGrid').appendChild(card);
+    const canvas = card.querySelector('canvas');
+    const ds = [
+      { label: 'A', data: band.x.map((x, j) => ({x, y: band.pdf[j]})), borderColor: '#0369a1', backgroundColor: 'rgba(3,105,161,0.15)', fill: true, pointRadius: 0, showLine: true },
+      { label: 'B', data: (hb[i].x || []).map((x, j) => ({x, y: hb[i].pdf[j]})), borderColor: '#c2410c', backgroundColor: 'rgba(194,65,12,0.12)', fill: true, pointRadius: 0, showLine: true },
+    ];
+    pdfCharts.push(new Chart(canvas, {
+      type: 'line',
+      data: { datasets: ds },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Reflectance', font: { size: 10 } } },
+          y: { display: true, ticks: { display: false }, grid: { color: 'rgba(0,0,0,0.06)' } },
+        },
+      },
+    }));
+  });
+}
+
+async function ensureCaseMetrics(mid) {
+  if (modelCase[mid]) return modelCase[mid];
+  const g = modelGlobals[mid];
+  if (!g || !g.case_metrics) return null;
+  modelCase[mid] = await fetch(g.case_metrics).then(r => r.json());
+  return modelCase[mid];
+}
+
+function confmatHtml(label, row) {
+  if (!row || row.tp == null) {
+    return `<div class="confmat-card"><h4>${label}</h4><div class="empty-hint">No confusion counts for this image (preds available on test split only).</div></div>`;
+  }
+  return `<div class="confmat-card">
+    <h4>${label}</h4>
+    <table class="confmat-table">
+      <thead><tr><th></th><th>Pred LS</th><th>Pred BG</th></tr></thead>
+      <tbody>
+        <tr><th>GT LS</th><td class="tp"><b>${row.tp}</b><div class="muted">TP</div></td><td class="fn"><b>${row.fn}</b><div class="muted">FN</div></td></tr>
+        <tr><th>GT BG</th><td class="fp"><b>${row.fp}</b><div class="muted">FP</div></td><td class="tn"><b>${row.tn}</b><div class="muted">TN</div></td></tr>
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderCompareGallery(gallery, modelRows) {
+  /**
+   * Row 1: RGB | GT | model1 pred (B/W) | model2 pred (B/W)
+   * Row 2: empty | empty | model1 error | model2 error  (aligned under preds)
+   */
+  gallery.classList.add('compare-layout');
+  const base = (modelRows.find(m => m.row) || {}).row;
+  if (!base) return;
+
+  const mainCards = [];
+  mainCards.push(base.rgb
+    ? `<div class="eg-card"><h5>RGB</h5><img src="${base.rgb}" alt="rgb"/></div>`
+    : `<div class="eg-card eg-spacer"></div>`);
+  mainCards.push(base.gt_gray
+    ? `<div class="eg-card"><h5>Ground truth</h5><img src="${base.gt_gray}" alt="gt"/></div>`
+    : `<div class="eg-card eg-spacer"></div>`);
+
+  // Keep two model slots so columns stay aligned even if one model is missing
+  const slots = [modelRows[0] || null, modelRows[1] || null];
+  while (slots.length < 2) slots.push(null);
+
+  slots.forEach((m, i) => {
+    const tone = i === 0 ? 'model-a' : 'model-b';
+    if (m && m.row) {
+      const predSrc = m.row.pred_gray || m.row.pred;
+      mainCards.push(predSrc
+        ? `<div class="eg-card ${tone}"><h5>${m.label} · Pred</h5><img src="${predSrc}" alt="pred"/></div>`
+        : `<div class="eg-card eg-spacer"></div>`);
+    } else {
+      mainCards.push(`<div class="eg-card eg-spacer"></div>`);
+    }
+  });
+
+  const errCards = [
+    `<div class="eg-card eg-spacer"></div>`,
+    `<div class="eg-card eg-spacer"></div>`,
+  ];
+  slots.forEach((m, i) => {
+    const tone = i === 0 ? 'model-a' : 'model-b';
+    if (m && m.row && m.row.error) {
+      errCards.push(
+        `<div class="eg-card ${tone}"><h5>${m.label} · Error vs GT</h5>` +
+        `<img class="eg-error" src="${m.row.error}" alt="error"/>` +
+        `<div class="muted" style="font-size:10px;margin-top:4px">red=FP · blue=FN (correct pixels hidden)</div></div>`
+      );
+    } else {
+      errCards.push(`<div class="eg-card eg-spacer"></div>`);
+    }
+  });
+
+  gallery.innerHTML =
+    `<div class="eg-row row-main">${mainCards.join('')}</div>` +
+    `<div class="eg-row row-errors">${errCards.join('')}</div>`;
+}
+
+function deriveDetMetrics(row) {
+  /** POD=recall, FAR=fp/(tp+fp), CSI≈iou for binary landslide. */
+  if (!row) return null;
+  const tp = Number(row.tp) || 0;
+  const fp = Number(row.fp) || 0;
+  const fn = Number(row.fn) || 0;
+  const tn = Number(row.tn) || 0;
+  const pod = (tp + fn) > 0 ? tp / (tp + fn) : (row.recall != null ? Number(row.recall) : null);
+  const far = (tp + fp) > 0 ? fp / (tp + fp) : (row.precision != null ? 1 - Number(row.precision) : null);
+  const precision = (tp + fp) > 0 ? tp / (tp + fp) : (row.precision != null ? Number(row.precision) : null);
+  const csi = (tp + fp + fn) > 0 ? tp / (tp + fp + fn) : (row.iou != null ? Number(row.iou) : null);
+  const bias = (tp + fn) > 0 ? (tp + fp) / (tp + fn) : null;
+  const f1 = row.f1 != null ? Number(row.f1) : (precision != null && pod != null && (precision + pod) > 0
+    ? 2 * precision * pod / (precision + pod) : null);
+  return {
+    iou: row.iou != null ? Number(row.iou) : csi,
+    f1,
+    precision,
+    pod,
+    far,
+    csi,
+    bias,
+    pred_pct: row.pred_pct != null ? Number(row.pred_pct) : null,
+  };
+}
+
+function metricsTableHtml(modelRows, { globalMode = false } = {}) {
+  /** Green = best, light red = worst per column. FAR lower better; Bias closer to 1 better. */
+  const specs = globalMode
+    ? [
+        { key: 'iou', label: 'IoU / CSI', better: 'max' },
+        { key: 'f1', label: 'F1', better: 'max' },
+        { key: 'miou', label: 'mIoU', better: 'max' },
+        { key: 'precision', label: 'Precision', better: 'max' },
+        { key: 'pod', label: 'POD (Recall)', better: 'max' },
+        { key: 'far', label: 'FAR', better: 'min' },
+        { key: 'pixel_accuracy', label: 'Pix Acc', better: 'max' },
+      ]
+    : [
+        { key: 'iou', label: 'IoU / CSI', better: 'max' },
+        { key: 'f1', label: 'F1', better: 'max' },
+        { key: 'precision', label: 'Precision', better: 'max' },
+        { key: 'pod', label: 'POD (Recall)', better: 'max' },
+        { key: 'far', label: 'FAR', better: 'min' },
+        { key: 'bias', label: 'Bias', better: 'near1' },
+        { key: 'pred_pct', label: 'Pred LS%', better: null },
+      ];
+
+  const rows = modelRows.map(m => {
+    if (globalMode) {
+      const tm = m.metrics || {};
+      return {
+        label: m.label,
+        metrics: {
+          iou: tm.iou != null ? Number(tm.iou) : null,
+          f1: tm.f1 != null ? Number(tm.f1) : null,
+          miou: tm.miou != null ? Number(tm.miou) : null,
+          precision: tm.precision != null ? Number(tm.precision) : null,
+          pod: tm.recall != null ? Number(tm.recall) : null,
+          far: tm.precision != null ? 1 - Number(tm.precision) : null,
+          pixel_accuracy: tm.pixel_accuracy != null ? Number(tm.pixel_accuracy) : null,
+        },
+      };
+    }
+    return { label: m.label, metrics: deriveDetMetrics(m.row) };
+  });
+
+  const best = {};
+  const worst = {};
+  specs.forEach(s => {
+    if (!s.better) return;
+    const vals = rows.map(r => r.metrics && r.metrics[s.key]).filter(v => v != null && !Number.isNaN(v));
+    if (!vals.length) return;
+    if (s.better === 'max') {
+      best[s.key] = Math.max(...vals);
+      worst[s.key] = Math.min(...vals);
+    } else if (s.better === 'min') {
+      best[s.key] = Math.min(...vals);
+      worst[s.key] = Math.max(...vals);
+    } else if (s.better === 'near1') {
+      best[s.key] = vals.reduce((a, b) => Math.abs(a - 1) <= Math.abs(b - 1) ? a : b);
+      worst[s.key] = vals.reduce((a, b) => Math.abs(a - 1) >= Math.abs(b - 1) ? a : b);
+    }
+  });
+
+  const head = `<tr><th>Model</th>${specs.map(s => `<th>${s.label}</th>`).join('')}</tr>`;
+  const body = rows.map(r => {
+    const cells = specs.map(s => {
+      const v = r.metrics ? r.metrics[s.key] : null;
+      const isBest = s.better && v != null && best[s.key] != null && Math.abs(v - best[s.key]) < 1e-9;
+      const isWorst = !isBest && s.better && v != null && worst[s.key] != null
+        && Math.abs(v - worst[s.key]) < 1e-9
+        && Math.abs(best[s.key] - worst[s.key]) > 1e-9;
+      const cls = isBest ? ' best' : (isWorst ? ' worst' : '');
+      const shown = s.key === 'pred_pct' && v != null ? `${(v * 100).toFixed(2)}%` : fmt(v);
+      return `<td class="num${cls}">${shown}</td>`;
+    }).join('');
+    return `<tr><td>${r.label}</td>${cells}</tr>`;
+  }).join('');
+  return `<table><thead>${head}</thead><tbody>${body}</tbody></table>`;
+}
+
+function destroyCompareChart() {
+  if (compareChart) {
+    try { compareChart.destroy(); } catch (_) {}
+    compareChart = null;
+  }
+}
+
+function clearSlideDeck() {
+  destroyCompareChart();
+  slideItems = [];
+  slideIdx = 0;
+  const deck = $('evalSlideDeck');
+  if (deck) deck.hidden = true;
+  const frame = $('slideFrame');
+  if (frame) frame.innerHTML = '';
+}
+
+function compareChartHtml() {
+  return (
+    `<div class="cmp-chart-wrap"><canvas id="compareChartCanvas" aria-label="Model comparison by metric"></canvas></div>` +
+    `<p class="status" style="margin-top:8px">X-axis = metric · bars within each group = models. Hover for exact scores. Reflects currently selected models.</p>`
+  );
+}
+
+function evalLsThresh() {
+  if (evalLsFilter === 'hi30') return 0.30;
+  if (evalLsFilter === 'hi50') return 0.50;
+  return null;
+}
+
+function microFromCaseRows(rows) {
+  if (!rows || !rows.length) return null;
+  let tp = 0, fp = 0, fn = 0, tn = 0;
+  rows.forEach(r => {
+    tp += Number(r.tp) || 0;
+    fp += Number(r.fp) || 0;
+    fn += Number(r.fn) || 0;
+    tn += Number(r.tn) || 0;
+  });
+  const prec = (tp + fp) > 0 ? tp / (tp + fp) : 0;
+  const rec = (tp + fn) > 0 ? tp / (tp + fn) : 0;
+  const f1 = (prec + rec) > 0 ? 2 * prec * rec / (prec + rec) : 0;
+  const iou = (tp + fp + fn) > 0 ? tp / (tp + fp + fn) : 0;
+  const pix = tp + tn + fp + fn;
+  const pixAcc = pix > 0 ? (tp + tn) / pix : 0;
+  const iouBg = (tn + fp + fn) > 0 ? tn / (tn + fp + fn) : 0;
+  return {
+    iou, f1, miou: 0.5 * (iou + iouBg), precision: prec, recall: rec,
+    pixel_accuracy: pixAcc, tp, fp, fn, tn, n_patches: rows.length, from: 'case_metrics_filtered',
+  };
+}
+
+async function metricsForModel(mid) {
+  const reg = ((MODEL_REG && MODEL_REG.models) || []).find(x => x.id === mid) || {};
+  const g = modelGlobals[mid] || {};
+  const label = reg.label || g.label || mid;
+  if (evalLsFilter === 'all') {
+    const tm = g.test_metrics_data || g.infer_test_metrics_data || reg.test_metrics || {};
+    return { label, metrics: tm, n_patches: tm.n_patches || null };
+  }
+  const key = evalLsFilter === 'hi50' ? 'test_metrics_ls50' : 'test_metrics_ls30';
+  let tm = g[`${key}_data`] || reg[key] || null;
+  if (!tm || typeof tm !== 'object') {
+    // Fallback: micro-average catalog case_metrics for this threshold
+    const thresh = evalLsThresh();
+    const cm = await ensureCaseMetrics(mid);
+    const rows = cm
+      ? Object.entries(cm)
+          .filter(([k, v]) => k.startsWith('test/') && Number(v.gt_pct || 0) >= thresh)
+          .map(([, v]) => v)
+      : [];
+    tm = microFromCaseRows(rows) || {};
+  }
+  return { label, metrics: tm, n_patches: tm.n_patches != null ? tm.n_patches : null };
+}
+
+function mountCompareChart() {
+  if (typeof Chart === 'undefined') {
+    const wrap = document.querySelector('.cmp-chart-wrap');
+    if (wrap) wrap.innerHTML = '<div class="empty-hint">Chart.js failed to load — check network / CDN.</div>';
+    return;
+  }
+  const canvas = document.getElementById('compareChartCanvas');
+  if (!canvas) return;
+  destroyCompareChart();
+
+  const activeIds = [...activeModels];
+  const metricSpecs = [
+    { key: 'iou', label: 'IoU' },
+    { key: 'f1', label: 'F1' },
+    { key: 'miou', label: 'mIoU' },
+    { key: 'precision', label: 'Precision' },
+    { key: 'recall', label: 'POD' },
+  ];
+  // Prefer precomputed rows cached on last renderModelEval
+  const cached = window.__evalMetricRows || null;
+  const datasets = activeIds.map((mid, i) => {
+    const reg = ((MODEL_REG && MODEL_REG.models) || []).find(x => x.id === mid) || {};
+    const g = modelGlobals[mid] || {};
+    const hit = cached && cached.find(r => r.mid === mid);
+    const tm = (hit && hit.metrics) || g.test_metrics_data || g.infer_test_metrics_data || reg.test_metrics || {};
+    return {
+      label: reg.label || g.label || mid,
+      data: metricSpecs.map(m => (tm[m.key] != null ? Number(tm[m.key]) : null)),
+      backgroundColor: MODEL_PALETTE[i % MODEL_PALETTE.length],
+      borderColor: MODEL_PALETTE[i % MODEL_PALETTE.length],
+      borderWidth: 1,
+      borderRadius: 2,
+      maxBarThickness: 48,
+    };
+  });
+  const filt = evalLsFilter === 'hi30' ? ' · ≥30% LS' : (evalLsFilter === 'hi50' ? ' · ≥50% LS' : '');
+
+  compareChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: metricSpecs.map(m => m.label),
+      datasets,
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { boxWidth: 12, font: { family: 'IBM Plex Sans', size: 11 } },
+        },
+        title: {
+          display: true,
+          text: `Landslide4Sense test comparison${filt}`,
+          font: { family: 'IBM Plex Sans', size: 14, weight: '600' },
+          color: '#1c2430',
+        },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              const v = ctx.parsed.y;
+              return `${ctx.dataset.label}: ${v == null ? '—' : v.toFixed(3)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'metric', font: { family: 'IBM Plex Sans', size: 11 } },
+          ticks: { font: { family: 'IBM Plex Sans', size: 11 } },
+          grid: { display: false },
+        },
+        y: {
+          min: 0,
+          max: 1,
+          title: { display: true, text: 'score', font: { family: 'IBM Plex Sans', size: 11 } },
+          ticks: { font: { family: 'IBM Plex Mono', size: 10 } },
+        },
+      },
+    },
+  });
+}
+
+function renderSlide() {
+  const deck = $('evalSlideDeck');
+  const frame = $('slideFrame');
+  const title = $('slideTitle');
+  const count = $('slideCount');
+  if (!deck || !frame) return;
+  if (!slideItems.length) {
+    deck.hidden = true;
+    frame.innerHTML = '';
+    return;
+  }
+  deck.hidden = false;
+  if (slideIdx < 0) slideIdx = 0;
+  if (slideIdx >= slideItems.length) slideIdx = slideItems.length - 1;
+  const item = slideItems[slideIdx];
+  title.textContent = item.title || 'Plot';
+  count.textContent = `${slideIdx + 1} / ${slideItems.length}`;
+  destroyCompareChart();
+  if (item.pair && item.pair.length) {
+    frame.innerHTML = `<div class="slide-pair">${item.pair.map(p =>
+      `<div class="pair-col"><h5>${p.label}</h5><img src="${p.src}" alt="${p.label}"/></div>`
+    ).join('')}</div>`;
+  } else if (item.chart === 'compare') {
+    frame.innerHTML = compareChartHtml();
+    requestAnimationFrame(() => mountCompareChart());
+  } else if (item.src) {
+    frame.innerHTML = `<img src="${item.src}" alt="${item.title || 'plot'}"/>`;
+  } else {
+    frame.innerHTML = item.html || '<div class="empty-hint">No plot</div>';
+  }
+  const prev = $('slidePrev');
+  const next = $('slideNext');
+  if (prev) prev.disabled = slideIdx <= 0;
+  if (next) next.disabled = slideIdx >= slideItems.length - 1;
+}
+
+function plotBasename(src) {
+  return String(src).split('/').pop();
+}
+
+function buildTestSlides(activeIds) {
+  const slides = [];
+  const shared = (MODEL_REG && MODEL_REG.plots) || {};
+  if (activeIds.length) {
+    slides.push({ title: 'Model comparison summary', chart: 'compare' });
+  }
+
+  // Pair training curves when 2+ models selected
+  const curvePair = [];
+  activeIds.forEach(mid => {
+    const g = modelGlobals[mid] || {};
+    const curves = (g.plots || []).filter(p => /training_curves/i.test(p));
+    curves.forEach(src => curvePair.push({ label: g.label || mid, src }));
+  });
+  if (curvePair.length >= 2) {
+    slides.push({ title: 'Training curves · compare', pair: curvePair.slice(0, 2) });
+  } else if (curvePair.length === 1) {
+    slides.push({ title: `${curvePair[0].label} · training curves`, src: curvePair[0].src });
+  }
+
+  // Pair qualitative infer grids by matching filename when possible
+  const inferNames = new Set();
+  activeIds.forEach(mid => {
+    const g = modelGlobals[mid] || {};
+    (g.plots || []).forEach(p => {
+      const bn = plotBasename(p);
+      if (/infer_/i.test(bn) && !/training/i.test(bn)) inferNames.add(bn);
+    });
+  });
+  [...inferNames].sort().forEach(bn => {
+    const pair = [];
+    activeIds.forEach(mid => {
+      const g = modelGlobals[mid] || {};
+      const hit = (g.plots || []).find(p => plotBasename(p) === bn);
+      if (hit) pair.push({ label: g.label || mid, src: hit });
+    });
+    if (pair.length >= 2) slides.push({ title: `Qualitative · ${bn}`, pair });
+    else if (pair.length === 1) slides.push({ title: `${pair[0].label} · ${bn}`, src: pair[0].src });
+  });
+
+  // Remaining unpaired model plots (non-infer/non-curve already covered)
+  activeIds.forEach(mid => {
+    const g = modelGlobals[mid] || {};
+    (g.plots || []).forEach(src => {
+      const bn = plotBasename(src);
+      if (/training_curves/i.test(bn) || /infer_/i.test(bn)) return;
+      slides.push({ title: `${g.label || mid} · ${bn}`, src });
+    });
+  });
+
+  if (Array.isArray(shared.comparison_plots)) {
+    shared.comparison_plots.forEach((src, i) => {
+      slides.push({ title: `Side-by-side case ${i + 1} · ${plotBasename(src)}`, src });
+    });
+  }
+  return slides;
+}
+
+async function renderModelEval(packA, packB) {
+  const pane = $('modelMetricsPane');
+  const grid = $('modelPlotGrid');
+  const conf = $('confmatGrid');
+  const gallery = $('evalCaseGallery');
+  grid.innerHTML = '';
+  conf.innerHTML = '';
+  gallery.innerHTML = '';
+  gallery.classList.remove('compare-layout');
+  clearSlideDeck();
+  if (!activeModels.size) {
+    pane.innerHTML = '<div class="empty-hint">Select one or more models on the left.</div>';
+    return;
+  }
+
+  const activeIds = [...activeModels];
+
+  if (metricsScope === 'image') {
+    const focusId = idA;
+    if (!focusId) {
+      pane.innerHTML = '<div class="empty-hint">Select an image in the left list.</div>';
+      return;
+    }
+    if (!focusId.startsWith('test/')) {
+      pane.innerHTML = `<div class="empty-hint">Per-image predictions are available for the <b>test</b> split. Selected: <code>${focusId}</code>. Switch split to Test, or open <b>Test set (all)</b> for global metrics.</div>`;
+      return;
+    }
+    let html = `<div class="stat-chips"><span class="stat-chip">${focusId}</span>`;
+    if (packA) html += `<span class="stat-chip">GT LS ${(packA.meta.landslide_pct*100).toFixed(1)}%</span>`;
+    if (activeIds.length > 1) html += `<span class="stat-chip">Comparing ${activeIds.length} models</span>`;
+    html += `</div>`;
+    const modelRows = [];
+    let any = false;
+    for (const mid of activeIds) {
+      const g = modelGlobals[mid] || {};
+      const cm = await ensureCaseMetrics(mid);
+      const row = cm && cm[focusId];
+      if (!row) {
+        modelRows.push({ label: g.label || mid, row: null });
+        continue;
+      }
+      any = true;
+      conf.insertAdjacentHTML('beforeend', confmatHtml(g.label || mid, row));
+      modelRows.push({ label: g.label || mid, row });
+    }
+    html += metricsTableHtml(modelRows);
+    html += '<p class="status" style="margin-top:6px">Green = best, light red = worst (FAR lower is better; Bias closer to 1 is better). POD = hit rate / recall.</p>';
+    if (any) {
+      html += activeIds.length > 1
+        ? '<p class="status">Row 1: RGB / GT / preds (B&amp;W). Row 2: error maps aligned under each model.</p>'
+        : '<p class="status">Confusion matrix and RGB / GT / pred / error panels below are for this image only.</p>';
+      renderCompareGallery(gallery, modelRows);
+    } else {
+      html += '<p class="empty-hint">No prediction assets for this image.</p>';
+    }
+    pane.innerHTML = html;
+    return;
+  }
+
+  // Test set: full or LS%-filtered stats + slideshow of figures
+  const resolved = [];
+  for (const mid of activeIds) {
+    const row = await metricsForModel(mid);
+    resolved.push({ mid, label: row.label, metrics: row.metrics, n_patches: row.n_patches });
+  }
+  window.__evalMetricRows = resolved;
+  const globalRows = resolved.map(r => ({ label: r.label, metrics: r.metrics }));
+  let html = metricsTableHtml(globalRows, { globalMode: true });
+  const nParts = resolved.map(r => r.n_patches).filter(v => v != null);
+  const nNote = nParts.length
+    ? ` · n=${[...new Set(nParts)].join('/')} patches`
+    : '';
+  const filtNote = evalLsFilter === 'hi30'
+    ? `Filtered to ≥30% GT landslide${nNote}.`
+    : (evalLsFilter === 'hi50'
+      ? `Filtered to ≥50% GT landslide${nNote}.`
+      : 'Full test set.');
+  html += `<p class="status" style="margin-top:6px">${filtNote} Green = best, light red = worst (FAR lower is better). POD = recall. Use Prev / Next for plots.</p>`;
+  const missing = resolved.filter(r => r.metrics == null || (r.metrics.f1 == null && r.metrics.iou == null));
+  if (missing.length && evalLsFilter !== 'all') {
+    html += `<p class="empty-hint">No filtered metrics yet for: ${missing.map(m => m.label).join(', ')} (need test inference).</p>`;
+  }
+  pane.innerHTML = html;
+
+  slideItems = buildTestSlides(activeIds);
+  slideIdx = 0;
+  renderSlide();
+}
+
+function fmt(v) {
+  return (v == null || Number.isNaN(v)) ? '—' : Number(v).toFixed(3);
+}
+
+function modelFamily(m) {
+  if (m.family) return m.family;
+  const id = String(m.id || '');
+  if (id.includes('600') && id.includes('ls1pct')) return 'ls1pct_600_10ep';
+  if (id.includes('ls1pct')) return 'ls1pct_10ep';
+  if (id.includes('native')) return '600_prithvi';
+  if (id.includes('600')) return '600_tm';
+  if (id.startsWith('prithvi')) return '300_tm';
+  return 'baseline';
+}
+
+/** Two linked matrices — same activeModels set */
+const MODEL_TABLES = [
+  {
+    id: 'full',
+    title: 'Full training',
+    samples: 'train 3799 · val 245 · test 800',
+    cols: [
+      { key: '300_tm', label: '300M_TM' },
+      { key: '600_tm', label: '600M_TM' },
+      { key: '600_prithvi', label: '600M_P' },
+    ],
+    rows: [
+      { key: 'pretrained', label: 'Pretrained' },
+      { key: 'random', label: 'Random' },
+      { key: 'baseline', label: 'Baseline' },
+    ],
+    ids: {
+      pretrained: { '300_tm': 'prithvi', '600_tm': 'prithvi_600', '600_prithvi': 'prithvi_600_native' },
+      random: { '300_tm': 'prithvi_random', '600_tm': 'prithvi_600_random', '600_prithvi': 'prithvi_600_native_random' },
+      baseline: { '300_tm': 'unet', '600_tm': null, '600_prithvi': null },
+    },
+  },
+  {
+    id: 'ls1pct',
+    title: 'LS ≥ 1% · 10ep freeze',
+    samples: 'train 1463 · val 75 · test 283',
+    cols: [
+      { key: 'ls1pct_300', label: '300M' },
+      { key: 'ls1pct_600', label: '600M' },
+      { key: 'ls1pct_tm', label: 'TerraMind' },
+    ],
+    rows: [
+      { key: 'pretrained', label: 'Pretrained' },
+      { key: 'random', label: 'Random' },
+    ],
+    ids: {
+      pretrained: {
+        'ls1pct_300': 'prithvi_ls1pct_10ep',
+        'ls1pct_600': 'prithvi_600_ls1pct_10ep',
+        'ls1pct_tm': 'terramind_ls1pct_10ep',
+      },
+      random: {
+        'ls1pct_300': 'prithvi_random_ls1pct_10ep',
+        'ls1pct_600': 'prithvi_600_random_ls1pct_10ep',
+        'ls1pct_tm': 'terramind_random_ls1pct_10ep',
+      },
+    },
+  },
+];
+
+function registryModel(id) {
+  if (!id) return null;
+  return ((MODEL_REG && MODEL_REG.models) || []).find(m => m.id === id) || null;
+}
+
+function matrixCellIds(table, rowKey, colKey) {
+  const id = table.ids[rowKey] && table.ids[rowKey][colKey];
+  return id ? [id] : [];
+}
+
+function matrixRowIds(table, rowKey) {
+  return table.cols.flatMap(c => matrixCellIds(table, rowKey, c.key));
+}
+
+function matrixColIds(table, colKey) {
+  return table.rows.flatMap(r => matrixCellIds(table, r.key, colKey));
+}
+
+function matrixTableIds(table) {
+  return table.rows.flatMap(r => matrixRowIds(table, r.key));
+}
+
+function matrixAllIds() {
+  return MODEL_TABLES.flatMap(t => matrixTableIds(t));
+}
+
+function availableMatrixIds(ids) {
+  return ids.filter(id => {
+    const m = registryModel(id);
+    return m && m.done;
+  });
+}
+
+function shortCellLabel(rowKey) {
+  if (rowKey === 'pretrained') return 'Pre';
+  if (rowKey === 'random') return 'Rnd';
+  return 'UNet';
+}
+
+function cellMetricText(mid) {
+  const m = registryModel(mid);
+  const tm = (m && m.test_metrics) || {};
+  if (tm.iou == null) return '';
+  return Number(tm.iou).toFixed(2);
+}
+
+function syncMatrixActiveClasses() {
+  document.querySelectorAll('#modelMatrixWrap .mcell[data-model-id]').forEach(btn => {
+    const id = btn.dataset.modelId;
+    btn.classList.toggle('active', id && activeModels.has(id));
+  });
+  const nReg = ((MODEL_REG && MODEL_REG.models) || []).length;
+  const nAvail = availableMatrixIds(matrixAllIds()).length;
+  if ($('modelNote')) {
+    $('modelNote').textContent =
+      `Matrix · ${activeModels.size} selected / ${nAvail} ready · ${nReg} registered`;
+  }
+}
+
+function toggleModelIds(ids, { force } = {}) {
+  const usable = availableMatrixIds(ids);
+  if (!usable.length) return;
+  const allOn = usable.every(id => activeModels.has(id));
+  const turnOn = force == null ? !allOn : !!force;
+  usable.forEach(id => {
+    if (turnOn) activeModels.add(id);
+    else activeModels.delete(id);
+  });
+  syncMatrixActiveClasses();
+  refreshAll();
+}
+
+function renderOneMatrixTable(table) {
+  let html = `<div class="matrix-block" data-table="${table.id}">`;
+  html += `<h3>${table.title}</h3>`;
+  html += `<p class="matrix-sub">${table.samples}</p>`;
+  html += `<table class="model-matrix" aria-label="${table.title}"><thead><tr>`;
+  html += `<th class="corner" data-act="all" data-table="${table.id}" title="Select / clear this table">All</th>`;
+  table.cols.forEach(c => {
+    html += `<th class="col-head" data-act="col" data-table="${table.id}" data-col="${c.key}" title="Select all in ${c.label}">${c.label}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  table.rows.forEach(r => {
+    html += `<tr><th class="row-head" data-act="row" data-table="${table.id}" data-row="${r.key}" title="Select all ${r.label}">${r.label}</th>`;
+    table.cols.forEach(c => {
+      const ids = matrixCellIds(table, r.key, c.key);
+      const mid = ids[0] || null;
+      const m = mid ? registryModel(mid) : null;
+      if (!mid) {
+        html += '<td><button type="button" class="mcell empty" disabled>—</button></td>';
+        return;
+      }
+      if (!m) {
+        // Registered stub / not built yet
+        html += `<td><button type="button" class="mcell empty" disabled title="${mid} (pending)">…</button></td>`;
+        return;
+      }
+      const ready = !!m.done;
+      const iou = cellMetricText(mid);
+      const label = shortCellLabel(r.key);
+      const title = `${m.label || mid}${ready ? '' : ' (not ready)'}${iou ? ` · IoU ${iou}` : ''}`;
+      html += `<td><button type="button" class="mcell${activeModels.has(mid) ? ' active' : ''}" `
+        + `data-model-id="${mid}" data-act="cell" ${ready ? '' : 'disabled '}title="${title}">`
+        + `${label}${iou ? `<span class="miou">${iou}</span>` : ''}</button></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderModelMatrix({ preserveSelection = false } = {}) {
+  const wrap = $('modelMatrixWrap');
+  if (!wrap) return;
+  const avail = availableMatrixIds(matrixAllIds());
+  if (!preserveSelection || !modelMatrixBooted) {
+    activeModels.clear();
+    // Default: full-training 300M_TM column
+    const full = MODEL_TABLES.find(t => t.id === 'full');
+    const defaults = availableMatrixIds(matrixColIds(full, '300_tm'));
+    (defaults.length ? defaults : avail).forEach(id => activeModels.add(id));
+    modelMatrixBooted = true;
+  } else {
+    [...activeModels].forEach(id => {
+      if (!registryModel(id)) activeModels.delete(id);
+    });
+  }
+
+  wrap.innerHTML = MODEL_TABLES.map(renderOneMatrixTable).join('');
+
+  wrap.querySelectorAll('[data-act]').forEach(el => {
+    el.onclick = () => {
+      const act = el.dataset.act;
+      const table = MODEL_TABLES.find(t => t.id === el.dataset.table);
+      if (act === 'all' && table) toggleModelIds(matrixTableIds(table));
+      else if (act === 'row' && table) toggleModelIds(matrixRowIds(table, el.dataset.row));
+      else if (act === 'col' && table) toggleModelIds(matrixColIds(table, el.dataset.col));
+      else if (act === 'cell' && el.dataset.modelId) toggleModelIds([el.dataset.modelId]);
+    };
+  });
+  syncMatrixActiveClasses();
+}
+
+function renderModelToggles() {
+  renderModelMatrix({ preserveSelection: modelMatrixBooted });
+}
+
+async function initModels() {
+  try {
+    MODEL_REG = await fetch('models/registry.json').then(r => {
+      if (!r.ok) throw new Error('no registry');
+      return r.json();
+    });
+  } catch {
+    MODEL_REG = { models: [] };
+    $('modelNote').textContent = 'No model assets yet (train/infer still running?).';
+    return;
+  }
+  for (const m of (MODEL_REG.models || [])) {
+    const g = await fetch(m.global).then(r => r.json()).catch(() => m);
+    modelGlobals[m.id] = g;
+  }
+  renderModelMatrix({ preserveSelection: false });
+}
+
+function selectAllModels() {
+  // Default eval selection: full-training 300M column (not every cell)
+  const full = MODEL_TABLES.find(t => t.id === 'full');
+  toggleModelIds(matrixColIds(full, '300_tm'), { force: true });
+}
+
+function applySidebarWidth(px) {
+  const minW = 240;
+  const maxW = Math.max(minW, Math.min(720, Math.floor(window.innerWidth * 0.55)));
+  const w = Math.max(minW, Math.min(maxW, Math.round(px)));
+  document.documentElement.style.setProperty('--sidebar-w', `${w}px`);
+  try { localStorage.setItem('l4s_sidebar_w', String(w)); } catch (_) {}
+  return w;
+}
+
+function wireSidebarSplitter() {
+  const shell = document.querySelector('.shell');
+  const split = $('sidebarSplitter');
+  if (!shell || !split) return;
+  try {
+    const saved = Number(localStorage.getItem('l4s_sidebar_w'));
+    if (Number.isFinite(saved) && saved >= 240) applySidebarWidth(saved);
+  } catch (_) {}
+
+  let dragging = false;
+  const onMove = (clientX) => {
+    if (!dragging) return;
+    const rect = shell.getBoundingClientRect();
+    applySidebarWidth(clientX - rect.left);
+  };
+  const stop = () => {
+    if (!dragging) return;
+    dragging = false;
+    shell.classList.remove('is-resizing');
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', stop);
+    window.removeEventListener('pointercancel', stop);
+  };
+  const onPointerMove = (ev) => onMove(ev.clientX);
+
+  split.addEventListener('pointerdown', (ev) => {
+    if (window.matchMedia('(max-width: 980px)').matches) return;
+    ev.preventDefault();
+    dragging = true;
+    shell.classList.add('is-resizing');
+    try { split.setPointerCapture(ev.pointerId); } catch (_) {}
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+    onMove(ev.clientX);
+  });
+
+  // Keyboard resize for accessibility
+  split.addEventListener('keydown', (ev) => {
+    const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')) || 344;
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); applySidebarWidth(cur - 16); }
+    if (ev.key === 'ArrowRight') { ev.preventDefault(); applySidebarWidth(cur + 16); }
+  });
+
+  window.addEventListener('resize', () => {
+    const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')) || 344;
+    applySidebarWidth(cur);
+  });
+}
+
+function wireUi() {
+  wireSidebarSplitter();
+  document.querySelectorAll('#lsFilterTags .tag').forEach(btn => {
+    btn.onclick = () => {
+      lsFilter = btn.dataset.ls;
+      document.querySelectorAll('#lsFilterTags .tag').forEach(b => b.classList.toggle('active', b===btn));
+      renderList(); refreshAll();
+    };
+  });
+  document.querySelectorAll('#splitTags .tag').forEach(btn => {
+    btn.onclick = () => {
+      const s = btn.dataset.split;
+      if (splitOn.has(s)) splitOn.delete(s); else splitOn.add(s);
+      btn.classList.toggle('active', splitOn.has(s));
+      renderList(); refreshAll();
+    };
+  });
+  $('cmpModeA').onclick = () => setCmpMode('A');
+  $('cmpModeB').onclick = () => setCmpMode('B');
+  $('cmpModeATop').onclick = () => setCmpMode('A');
+  $('cmpModeBTop').onclick = () => setCmpMode('B');
+  $('selWhole').onclick = () => {
+    selMode = 'whole';
+    // Do not change cmpMode (B · two images stays selected)
+    refreshAll();
+  };
+  $('selRoi').onclick = () => {
+    selMode = 'roi';
+    // Do not change cmpMode (B · two images stays selected)
+    refreshAll();
+  };
+  $('clearRoi').onclick = () => { roiA = roiB = null; refreshAll(); };
+  $('togMask').onclick = () => {
+    showMask = !showMask;
+    $('togMask').classList.toggle('active', showMask);
+    refreshAll();
+  };
+  $('togPred').onclick = () => {
+    showPred = !showPred; showError = false;
+    $('togPred').classList.toggle('active', showPred);
+    $('togError').classList.remove('active');
+    refreshAll();
+  };
+  $('togError').onclick = () => {
+    showError = !showError; showPred = false;
+    $('togError').classList.toggle('active', showError);
+    $('togPred').classList.remove('active');
+    refreshAll();
+  };
+  $('togModelEval').onchange = (e) => {
+    modelEvalOn = e.target.checked;
+    if (modelEvalOn) {
+      cmpMode = 'A';
+      idB = idA;
+      roiA = roiB = null;
+      showPred = true;
+      metricsScope = 'test'; // default to full test-set metrics
+      $('togPred').classList.add('active');
+      // Keep matrix selection; if empty, default to 300M_TM column on full table
+      if (!activeModels.size) {
+        const full = MODEL_TABLES.find(t => t.id === 'full');
+        if (full) toggleModelIds(matrixColIds(full, '300_tm'), { force: true });
+      } else syncMatrixActiveClasses();
+      // Prefer test split for per-image preds
+      if (![...splitOn].includes('test')) {
+        splitOn.add('test');
+        document.querySelectorAll('#splitTags .tag').forEach(b => b.classList.toggle('active', splitOn.has(b.dataset.split)));
+        renderList();
+      }
+    }
+    refreshAll();
+  };
+  $('scopeImage').onclick = () => { metricsScope = 'image'; refreshAll(); };
+  $('scopeTest').onclick = () => { metricsScope = 'test'; refreshAll(); };
+  document.querySelectorAll('#evalLsFilterTags .tag').forEach(btn => {
+    btn.onclick = () => {
+      evalLsFilter = btn.dataset.evalLs || 'all';
+      document.querySelectorAll('#evalLsFilterTags .tag').forEach(b => {
+        b.classList.toggle('active', b.dataset.evalLs === evalLsFilter);
+      });
+      refreshAll();
+    };
+  });
+  $('slidePrev').onclick = () => { if (slideIdx > 0) { slideIdx -= 1; renderSlide(); } };
+  $('slideNext').onclick = () => { if (slideIdx < slideItems.length - 1) { slideIdx += 1; renderSlide(); } };
+  document.addEventListener('keydown', (ev) => {
+    if ($('evalSlideDeck') && !$('evalSlideDeck').hidden) {
+      if (ev.key === 'ArrowLeft') { ev.preventDefault(); $('slidePrev').click(); }
+      if (ev.key === 'ArrowRight') { ev.preventDefault(); $('slideNext').click(); }
+    }
+  });
+  $('runWholePair').onclick = () => {
+    idA = $('pickA').value;
+    idB = $('pickB').value;
+    cmpMode = 'B';
+    // Keep current Selection (Whole or Bounding box)
+    refreshAll();
+  };
+  bindDraw($('canvasA'), 'A');
+  bindDraw($('canvasB'), 'B');
+}
+
+async function main() {
+  wireUi();
+  CATALOG = await fetch('catalog.json').then(r => {
+    if (!r.ok) throw new Error('catalog.json missing — run scripts/build_landslide_viewer.py');
+    return r.json();
+  });
+  await initModels();
+  renderList();
+  const imgs = filteredImages();
+  if (imgs.length) {
+    idA = imgs[0].id;
+    idB = imgs[Math.min(1, imgs.length-1)].id;
+  }
+  updateModeNotes();
+  await refreshAll();
+}
+
+main().catch(err => setStatus(String(err.message || err), true));
+</script>
+</body>
+</html>

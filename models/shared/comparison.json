@@ -1,0 +1,36 @@
+{
+  "task": "Landslide4Sense binary segmentation (event-only, no pre/post)",
+  "models": [
+    {
+      "model_name": "prithvi",
+      "best_val_miou": 0.676558792591095,
+      "test_iou": 0.3622380315994429,
+      "test_f1": 0.5318278057090049,
+      "test_miou": 0.6706373278533808,
+      "test_precision": 0.4638954476411051,
+      "test_recall": 0.6230694337274927,
+      "done": true
+    },
+    {
+      "model_name": "prithvi_random",
+      "best_val_miou": 0.7312338948249817,
+      "test_iou": 0.4184698144044599,
+      "test_f1": 0.5900299183739108,
+      "test_miou": 0.7002709830643901,
+      "test_precision": 0.5244077124601844,
+      "test_recall": 0.6744246175226537,
+      "done": true
+    },
+    {
+      "model_name": "unet",
+      "best_val_miou": 0.7078780170317421,
+      "test_iou": 0.3540395888692165,
+      "test_f1": 0.5229383125568455,
+      "test_miou": 0.6684360970022897,
+      "test_precision": 0.5560015290519877,
+      "test_recall": 0.4935866618726543,
+      "done": true
+    }
+  ],
+  "best_by_test_iou": "prithvi_random"
+}

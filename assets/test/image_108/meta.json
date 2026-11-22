@@ -1,0 +1,25 @@
+{
+  "id": "test/image_108",
+  "split": "test",
+  "index": 108,
+  "landslide_pct": 0.00335693359375,
+  "landslide_pixels": 55,
+  "height": 128,
+  "width": 128,
+  "n_bands": 6,
+  "band_keys": [
+    "BLUE",
+    "GREEN",
+    "RED",
+    "NIR_BROAD",
+    "SWIR_1",
+    "SWIR_2"
+  ],
+  "assets": {
+    "rgb": "assets/test/image_108/rgb.png",
+    "label": "assets/test/image_108/label.png",
+    "label_gray": "assets/test/image_108/label_gray.png",
+    "spectra": "assets/test/image_108/spectra.json",
+    "bands": "assets/test/image_108/bands.f16"
+  }
+}

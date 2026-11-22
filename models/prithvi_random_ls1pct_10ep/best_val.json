@@ -1,0 +1,6 @@
+{
+  "best_val_score": 0.5492559671401978,
+  "best_val_miou": 0.5492559671401978,
+  "monitor": "val/IoU",
+  "epochs": 10
+}

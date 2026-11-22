@@ -1,0 +1,5 @@
+Parent: [redacted]
+Best by test IoU (landslide): prithvi
+
+prithvi: done=True val_miou=0.4316449761390686 test_iou=0.4662830719795184 test_f1=0.6360068951079475 test_miou=0.7149570434661426
+prithvi_random: done=True val_miou=0.5492559671401978 test_iou=0.4574614051523491 test_f1=0.6277509696451008 test_miou=0.705834844971591

@@ -1,0 +1,6 @@
+{
+  "best_val_miou": 0.7078780170317421,
+  "best_val_iou": 0.7078780170317421,
+  "monitor": "val/miou",
+  "epochs": 30
+}

@@ -1,0 +1,25 @@
+{
+  "id": "train/image_1091",
+  "split": "train",
+  "index": 1091,
+  "landslide_pct": 0.0089111328125,
+  "landslide_pixels": 146,
+  "height": 128,
+  "width": 128,
+  "n_bands": 6,
+  "band_keys": [
+    "BLUE",
+    "GREEN",
+    "RED",
+    "NIR_BROAD",
+    "SWIR_1",
+    "SWIR_2"
+  ],
+  "assets": {
+    "rgb": "assets/train/image_1091/rgb.png",
+    "label": "assets/train/image_1091/label.png",
+    "label_gray": "assets/train/image_1091/label_gray.png",
+    "spectra": "assets/train/image_1091/spectra.json",
+    "bands": "assets/train/image_1091/bands.f16"
+  }
+}

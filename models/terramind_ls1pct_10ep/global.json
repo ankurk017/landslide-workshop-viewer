@@ -1,0 +1,42 @@
+{
+  "id": "terramind_ls1pct_10ep",
+  "label": "TerraMind pretrained \u00b7 LS\u22651% \u00b7 10ep",
+  "family": "ls1pct_tm",
+  "group": "landslide",
+  "done": true,
+  "test_metrics": "models/terramind_ls1pct_10ep/test_metrics.json",
+  "test_metrics_data": {
+    "raw": {
+      "test/loss": 0.2127336710691452,
+      "test/Accuracy": 0.8570725917816162,
+      "test/F1_Score": 0.8048160076141357,
+      "test/IoU": 0.4626057744026184,
+      "test/Pixel_Accuracy": 0.9568063020706177,
+      "test/mIoU": 0.7088719606399536,
+      "test/mIoU_Micro": 0.9171894788742065
+    },
+    "miou": 0.7088719606399536,
+    "iou": 0.4626057744026184,
+    "f1": 0.8048160076141357
+  },
+  "best_val": "models/terramind_ls1pct_10ep/best_val.json",
+  "best_val_data": {
+    "best_val_score": 0.516192615032196,
+    "best_val_miou": 0.516192615032196,
+    "monitor": "val/IoU",
+    "epochs": 10
+  },
+  "val_metrics": "models/terramind_ls1pct_10ep/val_metrics.json",
+  "val_metrics_data": {
+    "val/loss": 0.18834517896175385,
+    "val/Accuracy": 0.8555195927619934,
+    "val/F1_Score": 0.8309873342514038,
+    "val/IoU": 0.516192615032196,
+    "val/Pixel_Accuracy": 0.964257001876831,
+    "val/mIoU": 0.7395162582397461,
+    "val/mIoU_Micro": 0.930980920791626
+  },
+  "plots": [
+    "models/terramind_ls1pct_10ep/plots/training_curves.png"
+  ]
+}

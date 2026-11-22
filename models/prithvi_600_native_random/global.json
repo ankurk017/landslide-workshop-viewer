@@ -1,0 +1,37 @@
+{
+  "id": "prithvi_600_native_random",
+  "label": "Prithvi-600M native (random init)",
+  "family": "600_prithvi",
+  "group": "landslide",
+  "done": true,
+  "test_metrics": "models/prithvi_600_native_random/test_metrics.json",
+  "test_metrics_data": {
+    "iou": 0.2933380114907241,
+    "f1": 0.45361384090554574,
+    "miou": 0.6373781876748557,
+    "precision": 0.5149940968122786,
+    "recall": 0.4053068100561142,
+    "pixel_accuracy": 0.9815605926513672,
+    "from": "native_prithvi"
+  },
+  "best_val": "models/prithvi_600_native_random/best_val.json",
+  "best_val_data": {
+    "best_epoch": 7,
+    "best_val_iou": 0.34914155493605914,
+    "precision": 0.5931180936630835,
+    "recall": 0.45910248018037675,
+    "f1": 0.5175758669039088,
+    "iou": 0.34914155493605914,
+    "iou_background": 0.9852266869285495,
+    "miou": 0.6671841209323044,
+    "pixel_accuracy": 0.9853428431919643,
+    "tp": 31561,
+    "fp": 21651,
+    "fn": 37184,
+    "tn": 3923684,
+    "loss": 0.6723889766200897
+  },
+  "plots": [
+    "models/prithvi_600_native_random/plots/training_curves.png"
+  ]
+}

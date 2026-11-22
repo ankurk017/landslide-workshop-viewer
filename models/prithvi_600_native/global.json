@@ -1,0 +1,37 @@
+{
+  "id": "prithvi_600_native",
+  "label": "Prithvi-EO-2.0-600M (native head)",
+  "family": "600_prithvi",
+  "group": "landslide",
+  "done": true,
+  "test_metrics": "models/prithvi_600_native/test_metrics.json",
+  "test_metrics_data": {
+    "iou": 0.2695521198324576,
+    "f1": 0.42464128194757417,
+    "miou": 0.6232836810439678,
+    "precision": 0.40576930863261423,
+    "recall": 0.44535431925698193,
+    "pixel_accuracy": 0.9772085571289062,
+    "from": "native_prithvi"
+  },
+  "best_val": "models/prithvi_600_native/best_val.json",
+  "best_val_data": {
+    "best_epoch": 1,
+    "best_val_iou": 0.3285154480830199,
+    "precision": 0.5041171226978107,
+    "recall": 0.48535893519528694,
+    "f1": 0.49456022292710405,
+    "iou": 0.3285154480830199,
+    "iou_background": 0.982867395145695,
+    "miou": 0.6556914216143575,
+    "pixel_accuracy": 0.9830098054846939,
+    "tp": 33366,
+    "fp": 32821,
+    "fn": 35379,
+    "tn": 3912514,
+    "loss": 0.6384117910938878
+  },
+  "plots": [
+    "models/prithvi_600_native/plots/training_curves.png"
+  ]
+}
